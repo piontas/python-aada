@@ -18,7 +18,7 @@ Download and unpack
 
     $ wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
     $ tar xvjf phantomjs-2.1.1-linux-x86_64.tar.bz2 
-    $ mv phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
+    $ sudo mv phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
 
 
 # Installation
