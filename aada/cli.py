@@ -54,8 +54,7 @@ class Cli(object):
         else:
             self._session = get_session()
 
-        self.__getattribute__('_{}'.format(self._parsed_args.command))()
-        return 0
+        return self.__getattribute__('_{}'.format(self._parsed_args.command))()
 
 
 def main():
