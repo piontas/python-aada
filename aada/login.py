@@ -8,6 +8,7 @@ import getpass
 import json
 import requests
 import time
+import tempfile
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
@@ -98,7 +99,8 @@ class Login:
 
         for tested_driver in TESTED_SELENIUM_DRIVERS:
             try:
-                driver = getattr(webdriver, tested_driver)()
+                driver = getattr(webdriver, tested_driver)(
+                    service_log_path='{}/wd.log'.format(tempfile.gettempdir()))
                 break
             except WebDriverException:
                 raise
