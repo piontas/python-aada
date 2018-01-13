@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 from setuptools import find_packages, setup
 
-dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'selenium']
+dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'pyppeteer']
 
 setup(
     name='aada',
-    version='0.1.0',
+    version='0.1.1',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
