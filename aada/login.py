@@ -38,13 +38,11 @@ class Login:
     _BEGIN_AUTH_URL = '{url}/common/SAS/BeginAuth'
     _END_AUTH_URL = '{url}/common/SAS/EndAuth'
     _PROCESS_AUTH_URL = '{url}/common/SAS/ProcessAuth'
-    _KMSI_URL = '{url}/kmsi'
     _SAML_URL = '{url}/{tenant_id}/saml2?SAMLRequest={saml_request}'
     _REFERER = '{url}/{tenant_id}/login'
 
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
-
     _MFA_DELAY = 3
 
     def __init__(self, session, saml_request=None):
@@ -57,7 +55,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_username = self._config.get('azure_username')
         self.mfa_token = None
-        self.browser = launch()
+        self.browser = launch(headless=False)
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -121,8 +119,6 @@ class Login:
             }
             await page.setContent(self._mfa_authentication(data))
 
-        await page.waitForSelector('form[action="/kmsi"]')
-        await page.click('input[type=submit]')
         await page.waitForSelector('input[name="SAMLResponse"]')
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
@@ -243,8 +239,6 @@ class Login:
         :return:
         """
         url = self._build_saml_login_url()
-        print(url)
-
         username_input = self._azure_username
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
