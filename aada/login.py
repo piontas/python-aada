@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import os
-import sys
 import base64
 import uuid
 import zlib
@@ -8,19 +7,18 @@ import getpass
 import json
 import requests
 import time
-import tempfile
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
 import boto3
-from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, \
-    WebDriverException
 from awscli.customizations.configure.writer import ConfigFileWriter
 
+import asyncio
+from pyppeteer.launcher import launch
+
 from .compat import quote, raw_input
-from . import LOGIN_URL, MFA_WAIT_METHODS, TESTED_SELENIUM_DRIVERS
+from . import LOGIN_URL, MFA_WAIT_METHODS
 
 
 class MfaException(Exception):
@@ -40,6 +38,7 @@ class Login:
     _BEGIN_AUTH_URL = '{url}/common/SAS/BeginAuth'
     _END_AUTH_URL = '{url}/common/SAS/EndAuth'
     _PROCESS_AUTH_URL = '{url}/common/SAS/ProcessAuth'
+    _KMSI_URL = '{url}/kmsi'
     _SAML_URL = '{url}/{tenant_id}/saml2?SAMLRequest={saml_request}'
     _REFERER = '{url}/{tenant_id}/login'
 
@@ -58,6 +57,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_username = self._config.get('azure_username')
         self.mfa_token = None
+        self.browser = launch()
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -94,47 +94,40 @@ class Login:
             url=LOGIN_URL, tenant_id=self._azure_tenant_id,
             saml_request=quote(saml_request))
 
-    @staticmethod
-    def _render_js_form(url, username, password, mfa=None):
+    async def _render_js_form(self, url, username, password, mfa=None):
+        page = await self.browser.newPage()
+        await page.goto(url)
+        await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
+        await page.focus('input[name="loginfmt"]')
+        for l in username:
+            await page.keyboard.sendCharacter(l)
+        await page.click('input[type=submit]')
+        await page.waitForSelector('input[name="passwd"]:not(.moveOffScreen)')
+        await page.focus('input[name="passwd"]')
+        for l in password:
+            await page.keyboard.sendCharacter(l)
+        await page.click('input[type=submit]')
 
-        for tested_driver in TESTED_SELENIUM_DRIVERS:
-            try:
-                driver = getattr(webdriver, tested_driver)(
-                    service_log_path='{}/wd.log'.format(tempfile.gettempdir()))
-                break
-            except WebDriverException:
-                raise
-        driver.get(url)
+        if mfa:
+            await page.waitForSelector('input[name="GeneralVerify"]')
+            flow_token = await page.evaluate('() => $Config.sFT')
+            ctx = await page.evaluate('() => $Config.sCtx')
+            data = {
+                'login': username,
+                'AuthMethodId': mfa,
+                'Method': 'BeginAuth',
+                'ctx': ctx,
+                'flowToken': flow_token
+            }
+            await page.setContent(self._mfa_authentication(data))
 
-        data = {}
-        login_form = driver.find_element_by_id('credentials')
-        form_username = driver.find_element_by_name('login')
-        form_password = driver.find_element_by_name('passwd')
-        form_username.send_keys(username)
-        form_password.send_keys(password)
-        login_form.submit()
-        try:
-            if not mfa:
-                saml_response = driver.find_element_by_xpath(
-                    ".//form/input[@name='SAMLResponse']")
-                data = {
-                    'SAMLResponse': saml_response.get_attribute('value')
-                }
-            else:
-                data = {
-                    'Method': 'BeginAuth',
-                    'FlowToken': driver.execute_script(
-                        'return Constants.StrongAuth.FlowToken'),
-                    'Ctx': driver.execute_script(
-                        'return Constants.StrongAuth.Ctx'),
-                    'AuthMethodId': mfa
-                }
-        except NoSuchElementException:
-            data['error'] = 'Wrong password or MFA configuration! Please try ' \
-                            'again.'
-        finally:
-            driver.close()
-            return data
+        await page.waitForSelector('form[action="/kmsi"]')
+        await page.click('input[type=submit]')
+        await page.waitForSelector('input[name="SAMLResponse"]')
+        element = await page.querySelector('input[name="SAMLResponse"]')
+        saml_response = await element.evaluate('(element) => element.value')
+
+        return {'SAMLResponse': saml_response}
 
     @staticmethod
     def _get_aws_roles(saml_response):
@@ -160,7 +153,7 @@ class Login:
     def _assume_role(role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
-            SAMLAssertion=saml_response)
+            SAMLAssertion=saml_response) #,DurationSeconds=28800
 
     def _save_creadentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)
@@ -195,6 +188,7 @@ class Login:
         :param data:
         :return:
         """
+        login = data.pop('login')
         session = requests.Session()
         referer = self._REFERER.format(url=LOGIN_URL,
                                        tenant_id=self._azure_tenant_id)
@@ -229,22 +223,18 @@ class Login:
                 url=LOGIN_URL), json.dumps(data), headers)
 
         data = {
-            "FlowToken": json_response['FlowToken'],
+            "login": login,
+            "flowToken": json_response['FlowToken'],
             "request": json_response['Ctx'],
             "mfaAuthMethod": self._azure_mfa,
-            "rememberMFA": False
+            "GeneralVerify": ''
         }
 
         headers = {'Content-type': 'application/x-www-form-urlencoded',
                    'Referer': referer}
-
         response = session.post(self._PROCESS_AUTH_URL.format(url=LOGIN_URL),
                                 data, headers=headers)
-
-        tree = ET.fromstring(response.text)
-        saml_response = tree.findall(
-            ".//form/input[@name='SAMLResponse']")[0].attrib['value']
-        return saml_response
+        return response.text
 
     def _login(self):
         """
@@ -253,23 +243,17 @@ class Login:
         :return:
         """
         url = self._build_saml_login_url()
+        print(url)
 
         username_input = self._azure_username
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
 
-        data = self._render_js_form(url, username_input,
-                                    password_input, self._azure_mfa)
+        data = asyncio.get_event_loop().run_until_complete(
+            self._render_js_form(url, username_input, password_input,
+                                 self._azure_mfa))
 
-        if not self._azure_mfa:
-            try:
-                saml_response = data['SAMLResponse']
-            except KeyError:
-                print(data['error'])
-                sys.exit(1)
-        else:
-            saml_response = self._mfa_authentication(data)
-
+        saml_response = data['SAMLResponse']
         role, principal = self._choose_role(self._get_aws_roles(saml_response))
 
         print('Assuming AWS Role: {}'.format(role))

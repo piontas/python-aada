@@ -2,4 +2,4 @@ requests
 awscli
 botocore
 boto3
-selenium
+pyppeteer
