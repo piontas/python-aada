@@ -53,6 +53,7 @@ class Login:
         self._azure_tenant_id = self._config.get('azure_tenant_id')
         self._azure_app_id_uri = self._config.get('azure_app_id_uri')
         self._azure_mfa = self._config.get('azure_mfa')
+        self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
         self.mfa_token = None
         self.browser = launch(headless=False)
@@ -119,6 +120,10 @@ class Login:
             }
             await page.setContent(self._mfa_authentication(data))
 
+        if self._azure_kmsi:
+            await page.waitForSelector('form[action="/kmsi"]')
+            await page.waitForSelector('#idBtn_Back')
+            await page.click('#idBtn_Back')
         await page.waitForSelector('input[name="SAMLResponse"]')
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
@@ -149,9 +154,9 @@ class Login:
     def _assume_role(role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
-            SAMLAssertion=saml_response) #,DurationSeconds=28800
+            SAMLAssertion=saml_response)
 
-    def _save_creadentials(self, credentials, role_arn):
+    def _save_credentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)
         self._set_config_value('aws_access_key_id', credentials['AccessKeyId'])
         self._set_config_value('aws_secret_access_key', credentials[
@@ -222,8 +227,7 @@ class Login:
             "login": login,
             "flowToken": json_response['FlowToken'],
             "request": json_response['Ctx'],
-            "mfaAuthMethod": self._azure_mfa,
-            "GeneralVerify": ''
+            "mfaAuthMethod": self._azure_mfa
         }
 
         headers = {'Content-type': 'application/x-www-form-urlencoded',
@@ -253,7 +257,7 @@ class Login:
         print('Assuming AWS Role: {}'.format(role))
         sts_token = self._assume_role(role, principal, saml_response)
         credentials = sts_token['Credentials']
-        self._save_creadentials(credentials, role)
+        self._save_credentials(credentials, role)
 
         print('\n-------------------------------------------------------------')
         print('Your access key pair has been stored in the AWS configuration\n'
