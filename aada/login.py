@@ -14,7 +14,7 @@ from urllib.parse import quote
 from awscli.customizations.configure.writer import ConfigFileWriter
 from pyppeteer.errors import BrowserError, PageError
 
-from . import LOGIN_URL
+from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
 
 
@@ -111,13 +111,14 @@ class Login:
                     timeout=self._AWAIT_TIMEOUT
                 )
 
-                try:
+                if self._azure_mfa not in MFA_WAIT_METHODS:
+                    await page.waitForSelector('input[name="otc"]')
                     await page.focus('input[name="otc"]')
                     mfa_token = input('Azure MFA Token: ')
                     for l in mfa_token:
                         await page.keyboard.sendCharacter(l)
                     await page.click('input[type=submit]')
-                except PageError as e:
+                else:
                     print('Processing MFA authentication...')
 
             if self._azure_kmsi:
