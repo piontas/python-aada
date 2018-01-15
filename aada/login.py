@@ -12,9 +12,9 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
 from awscli.customizations.configure.writer import ConfigFileWriter
-from pyppeteer.errors import BrowserError
+from pyppeteer.errors import BrowserError, PageError
 
-from . import LOGIN_URL, MFA_WAIT_METHODS
+from . import LOGIN_URL
 from .launcher import launch
 
 
@@ -41,7 +41,7 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
-    _AWAIT_TIMEOUT = 60_000
+    _AWAIT_TIMEOUT = 10_000
 
     def __init__(self, session, saml_request=None):
         self._session = session
@@ -111,22 +111,23 @@ class Login:
                     timeout=self._AWAIT_TIMEOUT
                 )
 
-                if self._azure_mfa not in MFA_WAIT_METHODS:
-                    mfa_token = input('Azure MFA Token: ')
+                try:
                     await page.focus('input[name="otc"]')
+                    mfa_token = input('Azure MFA Token: ')
                     for l in mfa_token:
                         await page.keyboard.sendCharacter(l)
                     await page.click('input[type=submit]')
+                except PageError as e:
+                    print('Processing MFA authentication...')
 
             if self._azure_kmsi:
                 await page.waitForSelector(
                     'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
                 await page.waitForSelector('#idBtn_Back')
                 await page.click('#idBtn_Back')
-            await page.waitForSelector('input[name="SAMLResponse"]',
-                                       timeout=self._AWAIT_TIMEOUT)
+            await page.waitForSelector('input[name="SAMLResponse"]')
         except BrowserError as e:
-            print('Please try again, probably you entered a wrong password.')
+            print('Please try again, probably you entered a wrong password/token')
             exit(1)
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
