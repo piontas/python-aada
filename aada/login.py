@@ -4,8 +4,6 @@ import uuid
 import zlib
 import getpass
 import json
-import requests
-import time
 import boto3
 import asyncio
 
@@ -14,6 +12,7 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
 from awscli.customizations.configure.writer import ConfigFileWriter
+from pyppeteer.errors import BrowserError
 
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
@@ -42,6 +41,7 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
+    _AWAIT_TIMEOUT = 60_000
 
     def __init__(self, session, saml_request=None):
         self._session = session
@@ -53,8 +53,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.mfa_token = None
-        self.browser = launch()
+        self.browser = launch(headless=False)
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -105,24 +104,30 @@ class Login:
             await page.keyboard.sendCharacter(l)
         await page.click('input[type=submit]')
 
-        if mfa:
-            await page.waitForSelector('input[name="GeneralVerify"]')
-            flow_token = await page.evaluate('() => $Config.sFT')
-            ctx = await page.evaluate('() => $Config.sCtx')
-            data = {
-                'login': username,
-                'AuthMethodId': mfa,
-                'Method': 'BeginAuth',
-                'ctx': ctx,
-                'flowToken': flow_token
-            }
-            await page.setContent(self._mfa_authentication(data))
+        try:
+            if mfa:
+                await page.waitForSelector(
+                    'input[name="mfaLastPollStart"]',
+                    timeout=self._AWAIT_TIMEOUT
+                )
 
-        if self._azure_kmsi:
-            await page.waitForSelector('form[action="/kmsi"]')
-            await page.waitForSelector('#idBtn_Back')
-            await page.click('#idBtn_Back')
-        await page.waitForSelector('input[name="SAMLResponse"]')
+                if self._azure_mfa not in MFA_WAIT_METHODS:
+                    mfa_token = input('Azure MFA Token: ')
+                    await page.focus('input[name="otc"]')
+                    for l in mfa_token:
+                        await page.keyboard.sendCharacter(l)
+                    await page.click('input[type=submit]')
+
+            if self._azure_kmsi:
+                await page.waitForSelector(
+                    'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
+                await page.waitForSelector('#idBtn_Back')
+                await page.click('#idBtn_Back')
+            await page.waitForSelector('input[name="SAMLResponse"]',
+                                       timeout=self._AWAIT_TIMEOUT)
+        except BrowserError as e:
+            print('Please try again, probably you entered a wrong password.')
+            exit(1)
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
 
@@ -181,58 +186,6 @@ class Login:
     @staticmethod
     def _post(session, url, data, headers):
         return json.loads(session.post(url, data=data, headers=headers).text)
-
-    def _mfa_authentication(self, data):
-        """
-        :param data:
-        :return:
-        """
-        login = data.pop('login')
-        session = requests.Session()
-        referer = self._REFERER.format(url=LOGIN_URL,
-                                       tenant_id=self._azure_tenant_id)
-        headers = {'Content-type': 'application/json',
-                   'Accept': 'application/json', 'Referer': referer}
-
-        json_response = self._post(session, self._BEGIN_AUTH_URL.format(
-            url=LOGIN_URL), json.dumps(data), headers)
-
-        if not json_response['Success']:
-            raise MfaException
-
-        data = {
-            'Method': 'EndAuth',
-            'FlowToken': json_response['FlowToken'],
-            'SessionId': json_response['SessionId'],
-            'Ctx': json_response['Ctx'],
-            'AuthMethodId': self._azure_mfa
-        }
-
-        if self._azure_mfa not in MFA_WAIT_METHODS:
-            self.mfa_token = input('Azure MFA Token: ')
-            data['AdditionalAuthData'] = self.mfa_token
-
-        json_response = self._post(session, self._END_AUTH_URL.format(
-            url=LOGIN_URL), json.dumps(data), headers)
-
-        print('Processing MFA authentication...')
-        while json_response['ResultValue'] == 'AuthenticationPending':
-            time.sleep(self._MFA_DELAY)
-            json_response = self._post(session, self._END_AUTH_URL.format(
-                url=LOGIN_URL), json.dumps(data), headers)
-
-        data = {
-            "login": login,
-            "flowToken": json_response['FlowToken'],
-            "request": json_response['Ctx'],
-            "mfaAuthMethod": self._azure_mfa
-        }
-
-        headers = {'Content-type': 'application/x-www-form-urlencoded',
-                   'Referer': referer}
-        response = session.post(self._PROCESS_AUTH_URL.format(url=LOGIN_URL),
-                                data, headers=headers)
-        return response.text
 
     def _login(self):
         """
