@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
 from awscli.customizations.configure.writer import ConfigFileWriter
-from pyppeteer.errors import BrowserError, PageError
+from pyppeteer.errors import BrowserError
 
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
