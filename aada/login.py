@@ -53,7 +53,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch(headless=False)
+        self.browser = launch()
 
         if saml_request:
             self._SAML_REQUEST = saml_request
