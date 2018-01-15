@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import os
 import base64
 import uuid
@@ -7,18 +6,17 @@ import getpass
 import json
 import requests
 import time
+import boto3
+import asyncio
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
+from urllib.parse import quote
 
-import boto3
 from awscli.customizations.configure.writer import ConfigFileWriter
 
-import asyncio
-from pyppeteer.launcher import launch
-
-from .compat import quote, raw_input
 from . import LOGIN_URL, MFA_WAIT_METHODS
+from .launcher import launch
 
 
 class MfaException(Exception):
@@ -56,7 +54,7 @@ class Login:
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
         self.mfa_token = None
-        self.browser = launch(headless=False)
+        self.browser = launch()
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -172,10 +170,10 @@ class Login:
                 print('[ {} ]: {}'.format(i, role.split(',')[0]))
 
             print('Choose the role you would like to assume:')
-            selected_role = int(raw_input('Selection: '))
+            selected_role = int(input('Selection: '))
             while selected_role not in allowed_values:
                 print('Invalid role index, please try again')
-                selected_role = int(raw_input('Selection: '))
+                selected_role = int(input('Selection: '))
             return aws_roles[selected_role - 1].split(',')[0], aws_roles[
                 selected_role - 1].split(',')[1]
         return aws_roles[0].split(',')[0], aws_roles[0].split(',')[1]
@@ -211,7 +209,7 @@ class Login:
         }
 
         if self._azure_mfa not in MFA_WAIT_METHODS:
-            self.mfa_token = raw_input('Azure MFA Token: ')
+            self.mfa_token = input('Azure MFA Token: ')
             data['AdditionalAuthData'] = self.mfa_token
 
         json_response = self._post(session, self._END_AUTH_URL.format(

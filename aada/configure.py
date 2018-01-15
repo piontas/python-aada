@@ -1,10 +1,8 @@
-from __future__ import absolute_import
 import os
 
 from awscli.customizations.configure.writer import ConfigFileWriter
 from botocore.exceptions import ProfileNotFound
 
-from .compat import raw_input
 from . import MFA_ALLOWED_METHODS
 
 
@@ -28,7 +26,7 @@ class Configure:
 
     @staticmethod
     def _get_value(value, prompt_text=''):
-        response = raw_input('{} [{}]: '.format(prompt_text, value))
+        response = input('{} [{}]: '.format(prompt_text, value))
         if not response:
             response = None
         return response
