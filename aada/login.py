@@ -256,10 +256,11 @@ class Login:
         sts_token = self._assume_role(role, principal, saml_response)
         credentials = sts_token['Credentials']
         self._save_credentials(credentials, role)
+        profile = self._session.profile if self._session.profile else 'default'
 
         print('\n-------------------------------------------------------------')
         print('Your access key pair has been stored in the AWS configuration\n'
-              'file under the {} profile.'.format(self._session.profile))
+              'file under the {} profile.'.format(profile))
         print('Credentials expires at {:%Y-%m-%d %H:%M:%S}.'.format(
             credentials['Expiration']))
         print('-------------------------------------------------------------\n')

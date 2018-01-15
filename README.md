@@ -5,21 +5,7 @@ Generates STS Tokens based on SAML Assertion from Azure AD (with MFA enabled als
 
 # System Requirements
 
-* Python2.7 or Python3.3+
-* Selenium webdriver like [PhantomJS](http://phantomjs.org) or [Chrome driver](https://sites.google.com/a/chromium.org/chromedriver/)
-
-## How to install PhantomJS on Linux Debian
-
-Install prerequisites
-
-    $ sudo apt-get install -y libssl-dev libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev
-    
-Download and unpack
-
-    $ wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
-    $ tar xvjf phantomjs-2.1.1-linux-x86_64.tar.bz2 
-    $ sudo mv phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
-
+* Python3.5+
 
 # Installation
 
@@ -49,6 +35,20 @@ To login to Azure AD and assume role with SAML
 To login with named profile
 
     $ aada login --profile <profile_name>
+
+## Configuration options
+Before aada can be used, below details has to be collected:
+
+* Azure Tenant ID
+* Azure App ID URI
+* Azure Username
+* Azure MFA (Leave empty if not using MFA). 
+
+MFA Options:
+* *PhoneAppOTP* - mobile phone application generated token
+* *OneWaySMS* - sms based token
+* *PhoneAppNotification* - mobile phone application notification
+* *TwoWayVoiceMobile* - voice call confirmation
     
 
 # TODO
