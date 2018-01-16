@@ -5,7 +5,7 @@ Generates STS Tokens based on SAML Assertion from Azure AD (with MFA enabled als
 
 # System Requirements
 
-* Python3.5+
+* Python3.6+
 
 # Installation
 
