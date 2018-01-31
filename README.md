@@ -28,9 +28,13 @@ To configure named profile
 
     $ aada configure --profile <profile_name>
 
-To login to Azure AD and assume role with SAML
+To login to Azure AD and assume role with SAML and pick role from a list 
 
     $ aada login
+
+To login to Azure AD and assume role with SAML with preselected role and account
+
+    $ aada login -a <account number>  -r <rolename>
     
 To login with named profile
 
