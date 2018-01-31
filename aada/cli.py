@@ -1,13 +1,12 @@
 import sys
 import logging
 import argparse
- 
 
 from botocore.session import Session, get_session
 from . import __version__
 from .login import Login
 from .configure import Configure
- 
+
 LOG = logging.getLogger('aada')
 LOG_FORMAT = (
     '%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
