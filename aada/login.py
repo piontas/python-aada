@@ -6,22 +6,22 @@ import getpass
 import json
 import boto3
 import asyncio
- 
+
 from datetime import datetime
 from xml.etree import ElementTree as ET
 from urllib.parse import quote
- 
+
 from awscli.customizations.configure.writer import ConfigFileWriter
 from pyppeteer.errors import BrowserError
- 
+
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
- 
- 
+
+
 class MfaException(Exception):
     pass
- 
- 
+
+
 class Login:
     _SAML_REQUEST = \
         '<samlp:AuthnRequest xmlns="urn:oasis:names:tc:SAML:2.0:metadata" xml' \
@@ -31,7 +31,7 @@ class Login:
         ':names:tc:SAML:2.0:assertion">{app_id}</Issuer><samlp:NameIDPolicy F' \
         'ormat="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"/></sa' \
         'mlp:AuthnRequest>'
- 
+
     _BEGIN_AUTH_URL = '{url}/common/SAS/BeginAuth'
     _END_AUTH_URL = '{url}/common/SAS/EndAuth'
     _PROCESS_AUTH_URL = '{url}/common/SAS/ProcessAuth'
@@ -42,7 +42,7 @@ class Login:
                     'aws_session_token']
     _MFA_DELAY = 3
     _AWAIT_TIMEOUT = 30_000
- 
+
     def __init__(self, session, role=None, account=None, saml_request=None):
         self._session = session
         self._role = role
@@ -59,10 +59,10 @@ class Login:
  
         if saml_request:
             self._SAML_REQUEST = saml_request
- 
+
     def __call__(self):
         return self._login()
- 
+
     def _set_config_value(self, key, value):
         section = 'default'
  
@@ -81,7 +81,7 @@ class Login:
             if section_name.startswith('profile '):
                 updated_config['__section__'] = section_name[8:]
         self._config_writer.update_config(updated_config, config_filename)
- 
+
     def _build_saml_login_url(self):
         saml_request = base64.b64encode(zlib.compress(
             self._SAML_REQUEST.strip().format(
@@ -91,7 +91,7 @@ class Login:
         return self._SAML_URL.format(
             url=LOGIN_URL, tenant_id=self._azure_tenant_id,
             saml_request=quote(saml_request))
- 
+
     async def _render_js_form(self, url, username, password, mfa=None):
         page = await self.browser.newPage()
         await page.goto(url)
@@ -137,7 +137,7 @@ class Login:
         saml_response = await element.evaluate('(element) => element.value')
  
         return {'SAMLResponse': saml_response}
- 
+
     @staticmethod
     def _get_aws_roles(saml_response):
         aws_roles = []
@@ -157,20 +157,20 @@ class Login:
                 aws_roles.insert(index, new_role)
                 aws_roles.remove(role)
         return aws_roles
- 
+
     @staticmethod
     def _assume_role(role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
             SAMLAssertion=saml_response, DurationSeconds=3600)
- 
+
     def _save_credentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)
         self._set_config_value('aws_access_key_id', credentials['AccessKeyId'])
         self._set_config_value('aws_secret_access_key', credentials[
             'SecretAccessKey'])
         self._set_config_value('aws_session_token', credentials['SessionToken'])
- 
+
     @staticmethod
     def _choose_role(self, aws_roles):
         count_roles = len(aws_roles)
@@ -195,14 +195,14 @@ class Login:
             return aws_roles[selected_role - 1].split(',')[0], aws_roles[
                 selected_role - 1].split(',')[1]
         return aws_roles[0].split(',')[0], aws_roles[0].split(',')[1]
- 
+
     @staticmethod
     def _post(session, url, data, headers):
         return json.loads(session.post(url, data=data, headers=headers).text)
- 
+
     def _login(self):
         """
- 
+
         :param parsed_args:
         :return:
         """
@@ -210,21 +210,21 @@ class Login:
         username_input = self._azure_username
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
- 
+
         data = asyncio.get_event_loop().run_until_complete(
             self._render_js_form(url, username_input, password_input,
                                  self._azure_mfa))
- 
+
         saml_response = data['SAMLResponse']
         aws_roles = self._get_aws_roles(saml_response)
         role_arn, principal = self._choose_role(self, aws_roles)
-        
+     
         print('Assuming AWS Role: {}'.format(role_arn))
         sts_token = self._assume_role(role_arn, principal, saml_response)
         credentials = sts_token['Credentials']
         self._save_credentials(credentials, role_arn)
         profile = self._session.profile if self._session.profile else 'default'
- 
+
         print('\n-------------------------------------------------------------')
         print('Your access key pair has been stored in the AWS configuration\n'
               'file under the {} profile.'.format(profile))
@@ -232,4 +232,3 @@ class Login:
             credentials['Expiration']))
         print('-------------------------------------------------------------\n')
         return 0
- 
