@@ -37,7 +37,7 @@ class Login:
     _PROCESS_AUTH_URL = '{url}/common/SAS/ProcessAuth'
     _SAML_URL = '{url}/{tenant_id}/saml2?SAMLRequest={saml_request}'
     _REFERER = '{url}/{tenant_id}/login'
- 
+
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
@@ -56,7 +56,7 @@ class Login:
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
         self.browser = launch()
- 
+
         if saml_request:
             self._SAML_REQUEST = saml_request
 
@@ -68,16 +68,16 @@ class Login:
  
         if self._session.profile is not None:
             section = 'profile {}'.format(self._session.profile)
- 
+
         config_filename = os.path.expanduser(
             self._session.get_config_variable('config_file'))
         updated_config = {'__section__': section, key: value}
- 
+
         if key in self._CREDENTIALS:
             config_filename = os.path.expanduser(
                 self._session.get_config_variable('credentials_file'))
             section_name = updated_config['__section__']
- 
+
             if section_name.startswith('profile '):
                 updated_config['__section__'] = section_name[8:]
         self._config_writer.update_config(updated_config, config_filename)
@@ -105,14 +105,14 @@ class Login:
         for l in password:
             await page.keyboard.sendCharacter(l)
         await page.click('input[type=submit]')
- 
+
         try:
             if mfa:
                 await page.waitForSelector(
                     'input[name="mfaLastPollStart"]',
                     timeout=self._AWAIT_TIMEOUT
                 )
- 
+
                 if self._azure_mfa not in MFA_WAIT_METHODS:
                     await page.waitForSelector('input[name="otc"]')
                     await page.focus('input[name="otc"]')
@@ -122,7 +122,7 @@ class Login:
                     await page.click('input[type=submit]')
                 else:
                     print('Processing MFA authentication...')
- 
+
             if self._azure_kmsi:
                 await page.waitForSelector(
                     'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
@@ -135,7 +135,7 @@ class Login:
             #exit(1)
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
- 
+
         return {'SAMLResponse': saml_response}
 
     @staticmethod
@@ -148,7 +148,7 @@ class Login:
                 for value in attribute.iter(
                         '{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
                     aws_roles.append(value.text)
- 
+
         for role in aws_roles:
             chunks = role.split(',')
             if 'saml-provider' in chunks[0]:
@@ -186,7 +186,7 @@ class Login:
             allowed_values = list(range(1, count_roles + 1))
             for i, role in enumerate(aws_roles, start=1):
                 print('[ {} ]: {}'.format(i, role.split(',')[0]))
- 
+
             print('Choose the role you would like to assume:')
             selected_role = int(input('Selection: '))
             while selected_role not in allowed_values:
@@ -218,7 +218,7 @@ class Login:
         saml_response = data['SAMLResponse']
         aws_roles = self._get_aws_roles(saml_response)
         role_arn, principal = self._choose_role(self, aws_roles)
-     
+    
         print('Assuming AWS Role: {}'.format(role_arn))
         sts_token = self._assume_role(role_arn, principal, saml_response)
         credentials = sts_token['Credentials']

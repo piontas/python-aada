@@ -14,7 +14,7 @@ LOG_FORMAT = (
 
 class Cli(object):
     COMMAND_CHOICES = ('login', 'configure')
- 
+
     def __init__(self, args=None):
         if args is None:
             self.args = sys.argv[1:]
@@ -51,12 +51,12 @@ class Cli(object):
     def main(self):
         parser = self._create_parser()
         self._parsed_args = parser.parse_args(self.args)
- 
+
         if self._parsed_args.profile:
             self._session = Session(profile=self._parsed_args.profile)
         else:
             self._session = get_session()
- 
+
         if self._parsed_args.role:
           self._role = self._parsed_args.role
         if self._parsed_args.account:
