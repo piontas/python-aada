@@ -12,6 +12,7 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
 from awscli.customizations.configure.writer import ConfigFileWriter
+from pyppeteer.chromium_downloader import chromium_excutable
 from pyppeteer.errors import BrowserError
 
 from . import LOGIN_URL, MFA_WAIT_METHODS
@@ -43,6 +44,7 @@ class Login:
     _MFA_DELAY = 3
     _AWAIT_TIMEOUT = 30000
     _SLEEP_TIMEOUT = 1  # in seconds
+    _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH', chromium_excutable())
 
     def __init__(self, session, saml_request=None):
         self._session = session
@@ -55,6 +57,7 @@ class Login:
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
         self.browser = launch(
+            executablePath=self._EXEC_PATH,
             args=['--no-sandbox', '--disable-setuid-sandbox'])
 
         if saml_request:
