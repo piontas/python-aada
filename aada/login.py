@@ -44,7 +44,8 @@ class Login:
     _MFA_DELAY = 3
     _AWAIT_TIMEOUT = 30000
     _SLEEP_TIMEOUT = 1  # in seconds
-    _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH', chromium_excutable())
+    _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH',
+                                str(chromium_excutable()))
 
     def __init__(self, session, saml_request=None):
         self._session = session
