@@ -53,7 +53,8 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch()
+        self.browser = launch(
+            args=['--no-sandbox', '--headless', '--disable-gpu'])
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -130,8 +131,9 @@ class Login:
         except BrowserError as e:
             print('Please try again, probably you entered a wrong password/token')
             exit(1)
-        element = await page.querySelector('input[name="SAMLResponse"]')
-        saml_response = await element.evaluate('(element) => element.value')
+        await page.querySelector('input[name="SAMLResponse"]')
+        saml_response = await page.evaluate(
+            '() => document.getElementsByName("SAMLResponse")[0].value')
 
         return {'SAMLResponse': saml_response}
 
