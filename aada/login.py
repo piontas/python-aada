@@ -55,7 +55,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch()
+        self.browser = launch(executablePath='/usr/bin/chromium-browser', args= ['--no-sandbox', '--headless', '--disable-gpu'])
 
         if saml_request:
             self._SAML_REQUEST = saml_request
