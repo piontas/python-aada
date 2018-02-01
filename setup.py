@@ -5,7 +5,7 @@ dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'pyppeteer']
 
 setup(
     name='aada',
-    version='0.1.1',
+    version='0.1.2',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
