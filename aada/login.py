@@ -56,9 +56,6 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch(
-            executablePath=self._EXEC_PATH,
-            args=['--no-sandbox', '--disable-setuid-sandbox'])
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -96,7 +93,10 @@ class Login:
             saml_request=quote(saml_request))
 
     async def _render_js_form(self, url, username, password, mfa=None):
-        page = await self.browser.newPage()
+        browser = launch(executablePath=self._EXEC_PATH,
+                         args=['--no-sandbox', '--disable-setuid-sandbox'])
+
+        page = await browser.newPage()
         await page.goto(url)
         await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
