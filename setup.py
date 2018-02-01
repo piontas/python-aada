@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools import find_packages, setup
 
-dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'pyppeteer']
+dependencies = ['awscli', 'botocore', 'boto3', 'requests']
 
 setup(
     name='aada',
@@ -17,6 +17,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=dependencies,
+    dependency_links=['git+https://github.com/piontas/pyppeteer.git'],
     entry_points={
         'console_scripts': [
             'aada = aada.cli:main',

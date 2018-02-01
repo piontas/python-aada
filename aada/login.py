@@ -41,7 +41,7 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
-    _AWAIT_TIMEOUT = 10_000
+    _AWAIT_TIMEOUT = 30000
 
     def __init__(self, session, saml_request=None):
         self._session = session

@@ -2,4 +2,4 @@ requests
 awscli
 botocore
 boto3
-pyppeteer
+git+https://github.com/piontas/pyppeteer.git
