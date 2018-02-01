@@ -42,6 +42,7 @@ class Login:
                     'aws_session_token']
     _MFA_DELAY = 3
     _AWAIT_TIMEOUT = 30000
+    _SLEEP_TIMEOUT = 1  # in seconds
 
     def __init__(self, session, saml_request=None):
         self._session = session
@@ -53,8 +54,8 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch(
-            args=['--no-sandbox', '--headless', '--disable-gpu'])
+        self.browser = launch(chrome_args=[
+            '--no-sandbox', '--disable-setuid-sandbox'])
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -94,6 +95,7 @@ class Login:
     async def _render_js_form(self, url, username, password, mfa=None):
         page = await self.browser.newPage()
         await page.goto(url)
+        await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
         await page.focus('input[name="loginfmt"]')
         for l in username:
