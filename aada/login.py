@@ -139,7 +139,6 @@ class Login:
         await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await page.evaluate(
             '() => document.getElementsByName("SAMLResponse")[0].value')
-        await page.close()
 
         return {'SAMLResponse': saml_response}
 
@@ -208,13 +207,14 @@ class Login:
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
 
-        loop = asyncio.get_event_loop()
-        data = loop.run_until_complete(
-            self._render_js_form(url, username_input, password_input,
-                                 self._azure_mfa))
-
-        #for sig in (signal.SIGINT, signal.SIGTERM):
-        #    loop.remove_signal_handler(sig)
+        try:
+            loop = asyncio.get_event_loop()
+            data = loop.run_until_complete(
+                self._render_js_form(url, username_input, password_input,
+                                     self._azure_mfa))
+        except RuntimeError:
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.remove_signal_handler(sig)
 
         saml_response = data['SAMLResponse']
         role, principal = self._choose_role(self._get_aws_roles(saml_response))
