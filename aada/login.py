@@ -132,7 +132,7 @@ class Login:
         except BrowserError as e:
             print('Please try again, probably you entered a wrong password/token')
             print(e)
-            #exit(1)
+            exit(1)
         element = await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await element.evaluate('(element) => element.value')
 
@@ -162,7 +162,7 @@ class Login:
     def _assume_role(role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
-            SAMLAssertion=saml_response, DurationSeconds=3600)
+            SAMLAssertion=saml_response)
 
     def _save_credentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)
@@ -177,9 +177,9 @@ class Login:
         if count_roles > 1:
          if self._role:
             for i, role in enumerate(aws_roles, start=1):
-             row= role.split(',')[0]
-             role=row.split('/')[1]
-             account=row.split(':')[4]
+             row = role.split(',')[0]
+             role = row.split('/')[1]
+             account = row.split(':')[4]
              if role == self._role and account == self._account: 
                return aws_roles[i-1].split(',')[0], aws_roles[i-1].split(',')[1]
          else:
