@@ -64,7 +64,6 @@ class Cli(object):
  
         return self.__getattribute__('_{}'.format(self._parsed_args.command))()
 
-
 def main():
     cli = Cli()
     return cli.main()
