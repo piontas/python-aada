@@ -65,7 +65,7 @@ class Login:
 
     def _set_config_value(self, key, value):
         section = 'default'
- 
+
         if self._session.profile is not None:
             section = 'profile {}'.format(self._session.profile)
 
