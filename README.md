@@ -11,7 +11,7 @@ Generates STS Tokens based on SAML Assertion from Azure AD (with MFA enabled als
 
 Simply run:
 
-    $ pip3 install git+https://github.com/piontas/python-aada.git
+    $ pip install git+https://github.com/piontas/python-aada.git
 
 
 # Usage
