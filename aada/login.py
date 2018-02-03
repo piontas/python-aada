@@ -41,7 +41,9 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
-    _AWAIT_TIMEOUT = 30_000
+    _AWAIT_TIMEOUT = 30000
+    _SLEEP_TIMEOUT = 1  # in seconds
+    _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
 
     def __init__(self, session, role=None, account=None, saml_request=None):
         self._session = session
@@ -55,7 +57,6 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self.browser = launch(executablePath='/usr/bin/chromium-browser', args= ['--no-sandbox', '--headless', '--disable-gpu'])
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -93,8 +94,12 @@ class Login:
             saml_request=quote(saml_request))
 
     async def _render_js_form(self, url, username, password, mfa=None):
-        page = await self.browser.newPage()
+        browser = launch(executablePath=self._EXEC_PATH,
+                         args=['--no-sandbox', '--disable-setuid-sandbox'])
+
+        page = await browser.newPage()
         await page.goto(url)
+        await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
         await page.focus('input[name="loginfmt"]')
         for l in username:
@@ -133,8 +138,9 @@ class Login:
             print('Please try again, probably you entered a wrong password/token')
             print(e)
             exit(1)
-        element = await page.querySelector('input[name="SAMLResponse"]')
-        saml_response = await element.evaluate('(element) => element.value')
+        await page.querySelector('input[name="SAMLResponse"]')
+        saml_response = await page.evaluate(
+            '() => document.getElementsByName("SAMLResponse")[0].value')
 
         return {'SAMLResponse': saml_response}
 
@@ -211,7 +217,8 @@ class Login:
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
 
-        data = asyncio.get_event_loop().run_until_complete(
+        loop = asyncio.get_event_loop()
+        data = loop.run_until_complete(
             self._render_js_form(url, username_input, password_input,
                                  self._azure_mfa))
 

@@ -5,7 +5,7 @@ dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'pyppeteer']
 
 setup(
     name='aada',
-    version='0.1.1',
+    version='0.1.2',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
@@ -17,6 +17,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=dependencies,
+    dependency_links=['git+https://github.com/piontas/pyppeteer.git'],
     entry_points={
         'console_scripts': [
             'aada = aada.cli:main',
