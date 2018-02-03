@@ -45,8 +45,10 @@ class Login:
     _SLEEP_TIMEOUT = 1  # in seconds
     _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
 
-    def __init__(self, session, saml_request=None):
+    def __init__(self, session, role=None, account=None, saml_request=None):
         self._session = session
+        self._role = role
+        self._account = account
         self._config = self._session.get_scoped_config()
         config_writer = ConfigFileWriter()
         self._config_writer = config_writer
@@ -134,6 +136,7 @@ class Login:
             await page.waitForSelector('input[name="SAMLResponse"]')
         except BrowserError as e:
             print('Please try again, probably you entered a wrong password/token')
+            print(e)
             exit(1)
         await page.querySelector('input[name="SAMLResponse"]')
         saml_response = await page.evaluate(
@@ -175,9 +178,17 @@ class Login:
         self._set_config_value('aws_session_token', credentials['SessionToken'])
 
     @staticmethod
-    def _choose_role(aws_roles):
+    def _choose_role(self, aws_roles):
         count_roles = len(aws_roles)
         if count_roles > 1:
+         if self._role:
+            for i, role in enumerate(aws_roles, start=1):
+             row = role.split(',')[0]
+             role = row.split('/')[1]
+             account = row.split(':')[4]
+             if role == self._role and account == self._account: 
+               return aws_roles[i-1].split(',')[0], aws_roles[i-1].split(',')[1]
+         else:
             allowed_values = list(range(1, count_roles + 1))
             for i, role in enumerate(aws_roles, start=1):
                 print('[ {} ]: {}'.format(i, role.split(',')[0]))
@@ -212,12 +223,13 @@ class Login:
                                  self._azure_mfa))
 
         saml_response = data['SAMLResponse']
-        role, principal = self._choose_role(self._get_aws_roles(saml_response))
-
-        print('Assuming AWS Role: {}'.format(role))
-        sts_token = self._assume_role(role, principal, saml_response)
+        aws_roles = self._get_aws_roles(saml_response)
+        role_arn, principal = self._choose_role(self, aws_roles)
+    
+        print('Assuming AWS Role: {}'.format(role_arn))
+        sts_token = self._assume_role(role_arn, principal, saml_response)
         credentials = sts_token['Credentials']
-        self._save_credentials(credentials, role)
+        self._save_credentials(credentials, role_arn)
         profile = self._session.profile if self._session.profile else 'default'
 
         print('\n-------------------------------------------------------------')

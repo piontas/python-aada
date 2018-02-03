@@ -22,6 +22,8 @@ class Cli(object):
             self.args = args
         self._session = None
         self._parsed_args = None
+        self._role = None
+        self._account = None
 
     def _create_parser(self):
         parser = argparse.ArgumentParser(
@@ -33,11 +35,13 @@ class Cli(object):
         parser.add_argument("-v", "--version", action="version",
                             version="{}".format(__version__))
         parser.add_argument('-p', '--profile', help='AWS Profile')
+        parser.add_argument('-r', '--role', help='Role to pick')
+        parser.add_argument('-a', '--account', help='Account to pick')
         parser.add_argument('command', choices=self.COMMAND_CHOICES)
         return parser
 
     def _login(self):
-        login = Login(self._session)
+        login = Login(self._session, self._role, self._account)
         return login()
 
     def _configure(self):
@@ -53,13 +57,16 @@ class Cli(object):
         else:
             self._session = get_session()
 
+        if self._parsed_args.role:
+          self._role = self._parsed_args.role
+        if self._parsed_args.account:
+          self._account = self._parsed_args.account
+ 
         return self.__getattribute__('_{}'.format(self._parsed_args.command))()
-
 
 def main():
     cli = Cli()
     return cli.main()
-
 
 if __name__ == "__main__":
     sys.exit(main())
