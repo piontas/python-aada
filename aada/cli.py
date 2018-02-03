@@ -58,15 +58,17 @@ class Cli(object):
             self._session = get_session()
 
         if self._parsed_args.role:
-          self._role = self._parsed_args.role
+            self._role = self._parsed_args.role
         if self._parsed_args.account:
-          self._account = self._parsed_args.account
- 
+            self._account = self._parsed_args.account
+
         return self.__getattribute__('_{}'.format(self._parsed_args.command))()
+
 
 def main():
     cli = Cli()
     return cli.main()
+
 
 if __name__ == "__main__":
     sys.exit(main())
