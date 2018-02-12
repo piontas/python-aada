@@ -1,4 +1,4 @@
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 LOGIN_URL = 'https://login.microsoftonline.com'
 MFA_WAIT_METHODS = ('PhoneAppNotification', 'TwoWayVoiceMobile')
