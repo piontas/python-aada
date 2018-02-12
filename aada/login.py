@@ -189,18 +189,18 @@ class Login:
                     if role == self._role and account == self._account:
                         return aws_roles[i - 1].split(',')[0], aws_roles[
                             i - 1].split(',')[1]
-        else:
-            allowed_values = list(range(1, count_roles + 1))
-            for i, role in enumerate(aws_roles, start=1):
-                print('[ {} ]: {}'.format(i, role.split(',')[0]))
+            else:
+                allowed_values = list(range(1, count_roles + 1))
+                for i, role in enumerate(aws_roles, start=1):
+                    print('[ {} ]: {}'.format(i, role.split(',')[0]))
 
-            print('Choose the role you would like to assume:')
-            selected_role = int(input('Selection: '))
-            while selected_role not in allowed_values:
-                print('Invalid role index, please try again')
+                print('Choose the role you would like to assume:')
                 selected_role = int(input('Selection: '))
-            return aws_roles[selected_role - 1].split(',')[0], aws_roles[
-                selected_role - 1].split(',')[1]
+                while selected_role not in allowed_values:
+                    print('Invalid role index, please try again')
+                    selected_role = int(input('Selection: '))
+                return aws_roles[selected_role - 1].split(',')[0], aws_roles[
+                    selected_role - 1].split(',')[1]
         return aws_roles[0].split(',')[0], aws_roles[0].split(',')[1]
 
     @staticmethod
