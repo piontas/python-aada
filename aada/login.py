@@ -9,7 +9,7 @@ import asyncio
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
-from urllib.parse import quote
+from urllib.parse import quote, parse_qs
 
 from awscli.customizations.configure.writer import ConfigFileWriter
 from pyppeteer.errors import BrowserError
@@ -41,7 +41,7 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
-    _AWAIT_TIMEOUT = 30000
+    _AWAIT_TIMEOUT = 90000
     _SLEEP_TIMEOUT = 1  # in seconds
     _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
 
@@ -57,6 +57,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
+        self.saml_response = None
 
         if saml_request:
             self._SAML_REQUEST = saml_request
@@ -94,11 +95,21 @@ class Login:
             saml_request=quote(saml_request))
 
     async def _render_js_form(self, url, username, password, mfa=None):
-        browser = launch(executablePath=self._EXEC_PATH,
-                         args=['--no-sandbox', '--disable-setuid-sandbox'])
+        browser = await launch(executablePath=self._EXEC_PATH,
+                               args=['--no-sandbox', '--disable-setuid-sandbox'])
 
-        page = await browser.newPage()
-        await page.goto(url)
+        pages = await browser.pages()
+        page = pages[0]
+
+        async def _saml_response(req):
+            if req.url == 'https://signin.aws.amazon.com/saml':
+                self.saml_response = parse_qs(req.postData)['SAMLResponse'][0]
+            else:
+                await req.continue_()
+
+        page.on('request', _saml_response)
+        await page.setRequestInterception(True)
+        await page.goto(url, waitUntil='networkidle0')
         await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
         await page.focus('input[name="loginfmt"]')
@@ -113,13 +124,8 @@ class Login:
 
         try:
             if mfa:
-                await page.waitForSelector(
-                    'input[name="mfaLastPollStart"]',
-                    timeout=self._AWAIT_TIMEOUT
-                )
-
                 if self._azure_mfa not in MFA_WAIT_METHODS:
-                    await page.waitForSelector('input[name="otc"]')
+                    await page.waitForSelector('input[name="otc"]:not(.moveOffScreen)')
                     await page.focus('input[name="otc"]')
                     mfa_token = input('Azure MFA Token: ')
                     for l in mfa_token:
@@ -133,16 +139,12 @@ class Login:
                     'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
                 await page.waitForSelector('#idBtn_Back')
                 await page.click('#idBtn_Back')
-            await page.waitForSelector('input[name="SAMLResponse"]')
         except BrowserError as e:
-            print('Please try again, probably you entered a wrong password/token')
+            print('Please try again, probably you entered a wrong password')
             print(e)
             exit(1)
-        await page.querySelector('input[name="SAMLResponse"]')
-        saml_response = await page.evaluate(
-            '() => document.getElementsByName("SAMLResponse")[0].value')
-
-        return {'SAMLResponse': saml_response}
+        while not self.saml_response:
+            await asyncio.sleep(self._SLEEP_TIMEOUT)
 
     @staticmethod
     def _get_aws_roles(saml_response):
@@ -218,17 +220,17 @@ class Login:
         print('Azure username: {}'.format(self._azure_username))
         password_input = getpass.getpass('Azure password: ')
 
-        loop = asyncio.get_event_loop()
-        data = loop.run_until_complete(
-            self._render_js_form(url, username_input, password_input,
-                                 self._azure_mfa))
+        asyncio.get_event_loop().run_until_complete(self._render_js_form(
+            url, username_input, password_input, self._azure_mfa))
 
-        saml_response = data['SAMLResponse']
-        aws_roles = self._get_aws_roles(saml_response)
+        if not self.saml_response:
+            print('Something went wrong!')
+            exit(1)
+        aws_roles = self._get_aws_roles(self.saml_response)
         role_arn, principal = self._choose_role(self, aws_roles)
 
         print('Assuming AWS Role: {}'.format(role_arn))
-        sts_token = self._assume_role(role_arn, principal, saml_response)
+        sts_token = self._assume_role(role_arn, principal, self.saml_response)
         credentials = sts_token['Credentials']
         self._save_credentials(credentials, role_arn)
         profile = self._session.profile if self._session.profile else 'default'
