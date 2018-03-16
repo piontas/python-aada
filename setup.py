@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 from setuptools import find_packages, setup
 
-dependencies = ['awscli', 'botocore', 'boto3', 'requests', 'pyppeteer==0.0.14']
+dependencies = [
+    'awscli', 'botocore', 'boto3', 'requests', 'websockets==4.0.1',
+    'pyppeteer==0.0.14'
+]
 
 setup(
     name='aada',
