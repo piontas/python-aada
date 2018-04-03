@@ -4,4 +4,4 @@ botocore
 boto3
 websockets==4.0.1
 pyee==5.0.0
-pyppeteer=0.0.14
+pyppeteer==0.0.14

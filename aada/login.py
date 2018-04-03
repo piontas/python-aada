@@ -57,6 +57,7 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
+        self._session_duration = int(self._config.get('session_duration', 3600))
         self.saml_response = None
 
         if saml_request:
@@ -174,11 +175,10 @@ class Login:
                 aws_roles.remove(role)
         return aws_roles
 
-    @staticmethod
-    def _assume_role(role_arn, principal_arn, saml_response):
+    def _assume_role(self, role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
-            SAMLAssertion=saml_response)
+            SAMLAssertion=saml_response, DurationSeconds=self._session_duration)
 
     def _save_credentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)

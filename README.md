@@ -46,7 +46,8 @@ Before aada can be used, below details has to be collected:
 * Azure Tenant ID
 * Azure App ID URI
 * Azure Username
-* Azure MFA (Leave empty if not using MFA). 
+* Azure MFA (Leave empty if not using MFA).
+* AWS CLI session duration (3600 seconds by default) 
 
 MFA Options:
 * *PhoneAppOTP* - mobile phone application generated token
