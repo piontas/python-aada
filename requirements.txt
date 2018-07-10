@@ -2,6 +2,6 @@ requests
 awscli
 botocore
 boto3
-websockets==4.0.1
+websockets==5.0.1
 pyee==5.0.0
 pyppeteer==0.0.14
