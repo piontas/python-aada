@@ -2,13 +2,13 @@
 from setuptools import find_packages, setup
 
 dependencies = [
-    'awscli', 'botocore', 'boto3', 'requests', 'websockets==4.0.1',
-    'pyppeteer==0.0.14'
+    'awscli', 'botocore', 'boto3', 'requests', 'websockets==6.0',
+    'pyppeteer==0.0.19'
 ]
 
 setup(
     name='aada',
-    version='0.1.5',
+    version='0.1.6',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
@@ -37,6 +37,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ]
 )
