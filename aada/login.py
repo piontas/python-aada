@@ -6,19 +6,24 @@ import getpass
 import json
 import boto3
 import asyncio
+import time
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
 from urllib.parse import quote, parse_qs
 
 from awscli.customizations.configure.writer import ConfigFileWriter
-from pyppeteer.errors import BrowserError, TimeoutError
+from pyppeteer.errors import BrowserError, TimeoutError, NetworkError
 
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
 
 
 class MfaException(Exception):
+    pass
+
+
+class FormError(Exception):
     pass
 
 
@@ -41,16 +46,19 @@ class Login:
     _CREDENTIALS = ['aws_access_key_id', 'aws_secret_access_key',
                     'aws_session_token']
     _MFA_DELAY = 3
-    _AWAIT_TIMEOUT = 90000
-    _SLEEP_TIMEOUT = 1  # in seconds
+    _MFA_TIMEOUT = 60  # timeout in seconds to process MFA
+    _AWAIT_TIMEOUT = 30000
+    _SLEEP_TIMEOUT = 0.5  # in seconds
     _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
+    _RETRIES = 5
 
-    def __init__(self, session, role=None, account=None, debug=None,
-                 saml_request=None):
+    def __init__(self, session, role=None, account=None, debug=False,
+                 headless=True, saml_request=None):
         self._session = session
         self._role = role
         self._account = account
         self._debug = debug
+        self._headless = headless
         self._config = self._session.get_scoped_config()
         config_writer = ConfigFileWriter()
         self._config_writer = config_writer
@@ -97,8 +105,19 @@ class Login:
             url=LOGIN_URL, tenant_id=self._azure_tenant_id,
             saml_request=quote(saml_request))
 
+    @classmethod
+    async def _querySelector(cls, page, element, retries=0):
+        if retries > cls._RETRIES:
+            raise TimeoutError
+        try:
+            return await page.querySelector(element)
+        except NetworkError:
+            await asyncio.sleep(cls._SLEEP_TIMEOUT)
+            return await cls._querySelector(page, element, retries + 1)
+
     async def _render_js_form(self, url, username, password, mfa=None):
         browser = await launch(executablePath=self._EXEC_PATH,
+                               headless=self._headless,
                                args=['--no-sandbox', '--disable-setuid-sandbox'])
 
         pages = await browser.pages()
@@ -134,6 +153,9 @@ class Login:
         await page.click('input[type=submit]')
 
         try:
+            if await self._querySelector(page, '.has-error'):
+                raise FormError
+
             if mfa:
                 if self._azure_mfa not in MFA_WAIT_METHODS:
                     await page.waitForSelector('input[name="otc"]:not(.moveOffScreen)')
@@ -150,17 +172,24 @@ class Login:
                     'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
                 await page.waitForSelector('#idBtn_Back')
                 await page.click('#idBtn_Back')
-        except (TimeoutError, BrowserError) as e:
+
+            wait_time = time.time() + self._MFA_TIMEOUT
+            while time.time() < wait_time and not self.saml_response:
+                if await self._querySelector(page, '.has-error'):
+                    raise FormError
+
+            if not self.saml_response:
+                raise TimeoutError
+
+        except (TimeoutError, BrowserError, FormError) as e:
             print('An error occured while authenticating, check credentials.')
             print(e)
             if self._debug:
-                debugfile = 'aadaerror-%s.png' % \
-                    datetime.now().strftime("%Y-%m-%dT%H%m%SZ")
+                debugfile = 'aadaerror-{}.png'.format(
+                    datetime.now().strftime("%Y-%m-%dT%H%m%SZ"))
                 await page.screenshot({'path': debugfile})
-                print('See screenshot %s for clues.' % debugfile)
+                print('See screenshot {} for clues.'.format(debugfile))
             exit(1)
-        while not self.saml_response:
-            await asyncio.sleep(self._SLEEP_TIMEOUT)
 
     @staticmethod
     def _get_aws_roles(saml_response):

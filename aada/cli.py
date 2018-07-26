@@ -25,6 +25,7 @@ class Cli(object):
         self._role = None
         self._account = None
         self._debug = False
+        self._headless = True
 
     def _create_parser(self):
         parser = argparse.ArgumentParser(
@@ -37,6 +38,8 @@ class Cli(object):
                             version="{}".format(__version__))
         parser.add_argument('-d', '--debug', help='Debugging output',
                             action='store_true')
+        parser.add_argument('-n', '--no-headless', help='Not in headless mode',
+                            action='store_true')
         parser.add_argument('-p', '--profile', help='AWS Profile')
         parser.add_argument('-r', '--role', help='Role to pick')
         parser.add_argument('-a', '--account', help='Account to pick')
@@ -44,7 +47,8 @@ class Cli(object):
         return parser
 
     def _login(self):
-        login = Login(self._session, self._role, self._account, self._debug)
+        login = Login(self._session, self._role, self._account, self._debug,
+                      self._headless)
         return login()
 
     def _configure(self):
@@ -63,8 +67,12 @@ class Cli(object):
         if self._parsed_args.debug:
             self._debug = True
 
+        if self._parsed_args.no_headless:
+            self._headless = False
+
         if self._parsed_args.role:
             self._role = self._parsed_args.role
+
         if self._parsed_args.account:
             self._account = self._parsed_args.account
 
