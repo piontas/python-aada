@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote, parse_qs
 
 from awscli.customizations.configure.writer import ConfigFileWriter
-from pyppeteer.errors import BrowserError
+from pyppeteer.errors import BrowserError, TimeoutError
 
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
@@ -45,10 +45,12 @@ class Login:
     _SLEEP_TIMEOUT = 1  # in seconds
     _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
 
-    def __init__(self, session, role=None, account=None, saml_request=None):
+    def __init__(self, session, role=None, account=None, debug=None,
+                 saml_request=None):
         self._session = session
         self._role = role
         self._account = account
+        self._debug = debug
         self._config = self._session.get_scoped_config()
         config_writer = ConfigFileWriter()
         self._config_writer = config_writer
@@ -148,9 +150,14 @@ class Login:
                     'form[action="/kmsi"]', timeout=self._AWAIT_TIMEOUT)
                 await page.waitForSelector('#idBtn_Back')
                 await page.click('#idBtn_Back')
-        except BrowserError as e:
-            print('Please try again, probably you entered a wrong password')
+        except (TimeoutError, BrowserError) as e:
+            print('An error occured while authenticating, check credentials.')
             print(e)
+            if self._debug:
+                debugfile = 'aadaerror-%s.png' % \
+                    datetime.now().strftime("%Y-%m-%dT%H%m%SZ")
+                await page.screenshot({'path': debugfile})
+                print('See screenshot %s for clues.' % debugfile)
             exit(1)
         while not self.saml_response:
             await asyncio.sleep(self._SLEEP_TIMEOUT)
