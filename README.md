@@ -40,6 +40,14 @@ To login with named profile
 
     $ aada login --profile <profile_name>
 
+To login in debug mode
+
+    $ aada login -d
+
+To login in non-headless mode
+
+    $ aada login -n
+
 ## Configuration options
 Before aada can be used, below details has to be collected:
 
