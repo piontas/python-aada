@@ -7,6 +7,8 @@ import json
 import boto3
 import asyncio
 import time
+import logging
+from logger import logger_format
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
@@ -18,6 +20,8 @@ from pyppeteer.errors import BrowserError, TimeoutError, NetworkError
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
 
+#----------------- Global Variables: -----------------
+LOGGER = logging.getLogger(__name__)
 
 class MfaException(Exception):
     pass
@@ -167,7 +171,7 @@ class Login:
                         await page.keyboard.sendCharacter(l)
                     await page.click('input[type=submit]')
                 else:
-                    print('Processing MFA authentication...')
+                    LOGGER.info('Processing MFA authentication...')
 
             if self._azure_kmsi:
                 await page.waitForSelector(
@@ -184,13 +188,12 @@ class Login:
                 raise TimeoutError
 
         except (TimeoutError, BrowserError, FormError) as e:
-            print('An error occured while authenticating, check credentials.')
-            print(e)
+            LOGGER.error('An error occured while authenticating, check credentials:{}'.format(e))
             if self._debug:
                 debugfile = 'aadaerror-{}.png'.format(
                     datetime.now().strftime("%Y-%m-%dT%H%m%SZ"))
                 await page.screenshot({'path': debugfile})
-                print('See screenshot {} for clues.'.format(debugfile))
+                LOGGER.info('See screenshot {} for clues.'.format(debugfile))
             exit(1)
 
     @staticmethod
@@ -270,7 +273,7 @@ class Login:
             url, username_input, password_input, self._azure_mfa))
 
         if not self.saml_response:
-            print('Something went wrong!')
+            LOGGER.error('There is no saml response')
             exit(1)
         aws_roles = self._get_aws_roles(self.saml_response)
         role_arn, principal = self._choose_role(self, aws_roles)
