@@ -145,19 +145,25 @@ class Login:
         page.on('request', _saml_response)
         await page.setRequestInterception(True)
         await page.goto(url, waitUntil='networkidle0')
-        await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.focus('input[name="loginfmt"]')
-        await page.keyboard.type(username)
-        await page.click('input[type=submit]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.waitForSelector('input[name="Password"]:not(.moveOffScreen)')
-        await page.focus('input[name="Password"]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.keyboard.type(password)
-        await page.click('span[id=submitButton]')
-        await page.waitForSelector('input[type=submit]:not(.moveOffScreen)')
-        await page.click('input[type=submit]')
+
+        if self._headless:
+            try:
+                await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.focus('input[name="loginfmt"]')
+                await page.keyboard.type(username)
+                await page.click('input[type=submit]')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.waitForSelector('input[name="Password"]:not(.moveOffScreen)')
+                await page.focus('input[name="Password"]')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.keyboard.type(password)
+                await page.click('span[id=submitButton]')
+                await page.waitForSelector('input[type=submit]:not(.moveOffScreen)')
+                await page.click('input[type=submit]')
+            
+            except Exception:
+                LOGGER.error("An error occured while automating browser click-through, Try using the -n flag until browser automation is fixed")
 
         try:
             if await self._querySelector(page, '.has-error'):
