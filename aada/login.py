@@ -7,6 +7,8 @@ import json
 import boto3
 import asyncio
 import time
+import logging
+from logger import logger_format
 
 from datetime import datetime
 from xml.etree import ElementTree as ET
@@ -18,6 +20,8 @@ from pyppeteer.errors import BrowserError, TimeoutError, NetworkError
 from . import LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
 
+#----------------- Global Variables: -----------------
+LOGGER = logging.getLogger(__name__)
 
 class MfaException(Exception):
     pass
@@ -67,7 +71,8 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
-        self._session_duration = int(self._config.get('session_duration', 3600))
+        self._session_duration_hours = int(self._config.get('session_duration_hours', 1))
+        self._session_duration_seconds = self._session_duration_hours * 3600
         self.saml_response = None
 
         if saml_request:
@@ -140,17 +145,25 @@ class Login:
         page.on('request', _saml_response)
         await page.setRequestInterception(True)
         await page.goto(url, waitUntil='networkidle0')
-        await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.focus('input[name="loginfmt"]')
-        await page.keyboard.type(username)
-        await page.click('input[type=submit]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.waitForSelector('input[name="passwd"]:not(.moveOffScreen)')
-        await page.focus('input[name="passwd"]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
-        await page.keyboard.type(password)
-        await page.click('input[type=submit]')
+
+        if self._headless:
+            try:
+                await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.focus('input[name="loginfmt"]')
+                await page.keyboard.type(username)
+                await page.click('input[type=submit]')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.waitForSelector('input[name="Password"]:not(.moveOffScreen)')
+                await page.focus('input[name="Password"]')
+                await asyncio.sleep(self._SLEEP_TIMEOUT)
+                await page.keyboard.type(password)
+                await page.click('span[id=submitButton]')
+                await page.waitForSelector('input[type=submit]:not(.moveOffScreen)')
+                await page.click('input[type=submit]')
+            
+            except Exception:
+                LOGGER.error("An error occured while automating browser click-through, Try using the -n flag until browser automation is fixed")
 
         try:
             if await self._querySelector(page, '.has-error'):
@@ -165,7 +178,7 @@ class Login:
                         await page.keyboard.sendCharacter(l)
                     await page.click('input[type=submit]')
                 else:
-                    print('Processing MFA authentication...')
+                    LOGGER.info('Processing MFA authentication...')
 
             if self._azure_kmsi:
                 await page.waitForSelector(
@@ -182,13 +195,12 @@ class Login:
                 raise TimeoutError
 
         except (TimeoutError, BrowserError, FormError) as e:
-            print('An error occured while authenticating, check credentials.')
-            print(e)
+            LOGGER.error('An error occured while authenticating, check credentials:{}'.format(e))
             if self._debug:
                 debugfile = 'aadaerror-{}.png'.format(
                     datetime.now().strftime("%Y-%m-%dT%H%m%SZ"))
                 await page.screenshot({'path': debugfile})
-                print('See screenshot {} for clues.'.format(debugfile))
+                LOGGER.info('See screenshot {} for clues.'.format(debugfile))
             exit(1)
 
     @staticmethod
@@ -214,7 +226,7 @@ class Login:
     def _assume_role(self, role_arn, principal_arn, saml_response):
         return boto3.client('sts').assume_role_with_saml(
             RoleArn=role_arn, PrincipalArn=principal_arn,
-            SAMLAssertion=saml_response, DurationSeconds=self._session_duration)
+            SAMLAssertion=saml_response, DurationSeconds=self._session_duration_seconds)
 
     def _save_credentials(self, credentials, role_arn):
         self._set_config_value('aws_role_arn', role_arn)
@@ -268,7 +280,7 @@ class Login:
             url, username_input, password_input, self._azure_mfa))
 
         if not self.saml_response:
-            print('Something went wrong!')
+            LOGGER.error('There is no saml response')
             exit(1)
         aws_roles = self._get_aws_roles(self.saml_response)
         role_arn, principal = self._choose_role(self, aws_roles)

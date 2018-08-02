@@ -13,8 +13,8 @@ class Configure:
         ('azure_username', 'Azure username'),
         ('azure_mfa', 'If Azure MFA enabled: {:}'.format(', '.join(
             MFA_ALLOWED_METHODS))),
-        ('session_duration', 'AWS CLI session duration'),
-        ('azure_kmsi', 'Azure Keep me signed In'),
+        ('session_duration_hours', 'AWS CLI session duration in hours'),
+        # ('azure_kmsi', 'Azure Keep me signed In'),
         ('aws_role_arn', 'AWS default role arn')
     ]
 
