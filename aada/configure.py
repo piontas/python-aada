@@ -1,9 +1,13 @@
+import getpass
 import os
 
 from awscli.customizations.configure.writer import ConfigFileWriter
 from botocore.exceptions import ProfileNotFound
 
-from . import MFA_ALLOWED_METHODS
+from . import KEYRING, MFA_ALLOWED_METHODS
+
+if KEYRING:
+    import keyring
 
 
 class Configure:
@@ -11,6 +15,7 @@ class Configure:
         ('azure_tenant_id', 'Azure tenant id'),
         ('azure_app_id_uri', 'Azure app id uri'),
         ('azure_username', 'Azure username'),
+        ('use_keyring', 'Use Keyring to store password if available'),
         ('azure_mfa', 'If Azure MFA enabled: {:}'.format(', '.join(
             MFA_ALLOWED_METHODS))),
         ('session_duration', 'AWS CLI session duration'),
@@ -46,6 +51,12 @@ class Configure:
                 new_values[config_name] = new_value
         config_filename = os.path.expanduser(
             self._session.get_config_variable('config_file'))
+        if KEYRING and config.get('use_keyring'):
+            updatepwd = input('Update Azure password in keyring? ')
+            if updatepwd.upper() in ['Y', 'YES']:
+                azure_pass = getpass.getpass('Azure password ')
+                keyring.set_password('aada', config.get('azure_username'),
+                                     azure_pass)
         if new_values:
             self._write_credentials(new_values, parsed_args.profile)
             if parsed_args.profile is not None:
