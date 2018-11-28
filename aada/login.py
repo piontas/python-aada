@@ -266,7 +266,7 @@ class Login:
         """
         url = self._build_saml_login_url()
         username_input = self._azure_username
-        keyring_pass = None
+        kr_pass = None
         print('Azure username: {}'.format(self._azure_username))
 
         if KEYRING and self._use_keyring:
