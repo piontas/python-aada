@@ -1,7 +1,7 @@
 __version__ = "0.1.6"
 
 try:
-    import keyring
+    import keyring  # noqa
 except ImportError:
     KEYRING = False
 else:

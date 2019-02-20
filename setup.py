@@ -20,6 +20,9 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=dependencies,
+    extras_require = {
+        'keyring':  ['keyring~=18.0.0']
+    }
     entry_points={
         'console_scripts': [
             'aada = aada.cli:main',

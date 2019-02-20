@@ -15,7 +15,7 @@ class Configure:
         ('azure_tenant_id', 'Azure tenant id'),
         ('azure_app_id_uri', 'Azure app id uri'),
         ('azure_username', 'Azure username'),
-        ('use_keyring', 'Use Keyring to store password if available'),
+        ('use_keyring', 'Use Keyring to store password if available (true/false)'),
         ('azure_mfa', 'If Azure MFA enabled: {:}'.format(', '.join(
             MFA_ALLOWED_METHODS))),
         ('session_duration', 'AWS CLI session duration'),

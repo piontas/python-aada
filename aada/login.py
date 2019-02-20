@@ -201,8 +201,7 @@ class Login:
         aws_roles = []
         for attribute in ET.fromstring(base64.b64decode(saml_response)).iter(
                 '{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
-            if (attribute.get('Name') ==
-                    'https://aws.amazon.com/SAML/Attributes/Role'):
+            if (attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
                 for value in attribute.iter(
                         '{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
                     aws_roles.append(value.text)
