@@ -13,6 +13,9 @@ Simply run:
 
     $ pip install git+https://github.com/piontas/python-aada.git
 
+In order to install with keyring for password management:
+
+    $ pip install "git+https://github.com/piontas/python-aada.git#egg=python-aada [keyring]"
 
 # Usage
 
