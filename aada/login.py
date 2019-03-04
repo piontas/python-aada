@@ -15,8 +15,11 @@ from urllib.parse import quote, parse_qs
 from awscli.customizations.configure.writer import ConfigFileWriter
 from pyppeteer.errors import BrowserError, TimeoutError, NetworkError
 
-from . import LOGIN_URL, MFA_WAIT_METHODS
+from . import KEYRING, LOGIN_URL, MFA_WAIT_METHODS
 from .launcher import launch
+
+if KEYRING:
+    import keyring
 
 
 class MfaException(Exception):
@@ -67,7 +70,9 @@ class Login:
         self._azure_mfa = self._config.get('azure_mfa')
         self._azure_kmsi = self._config.get('azure_kmsi', False)
         self._azure_username = self._config.get('azure_username')
+        self._azure_password = None
         self._session_duration = int(self._config.get('session_duration', 3600))
+        self._use_keyring = self._config.get('use_keyring')
         self.saml_response = None
 
         if saml_request:
@@ -196,8 +201,7 @@ class Login:
         aws_roles = []
         for attribute in ET.fromstring(base64.b64decode(saml_response)).iter(
                 '{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
-            if (attribute.get('Name') ==
-                    'https://aws.amazon.com/SAML/Attributes/Role'):
+            if (attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
                 for value in attribute.iter(
                         '{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
                     aws_roles.append(value.text)
@@ -261,8 +265,20 @@ class Login:
         """
         url = self._build_saml_login_url()
         username_input = self._azure_username
+        kr_pass = None
         print('Azure username: {}'.format(self._azure_username))
-        password_input = getpass.getpass('Azure password: ')
+
+        if KEYRING and self._use_keyring:
+            try:
+                print('Getting password from keyring')
+                kr_pass = keyring.get_password('aada', self._azure_username)
+            except Exception as e:
+                print('Failed getting password from Keyring {}'.format(e))
+
+        if kr_pass is not None:
+            password_input = kr_pass
+        else:
+            password_input = getpass.getpass('Azure password: ')
 
         asyncio.get_event_loop().run_until_complete(self._render_js_form(
             url, username_input, password_input, self._azure_mfa))

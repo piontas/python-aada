@@ -5,3 +5,4 @@ boto3
 websockets==6.0
 pyee==5.0.0
 pyppeteer==0.0.19
+keyring~=18.0.0
