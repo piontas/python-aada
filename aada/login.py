@@ -136,9 +136,6 @@ class Login:
             else:
                 await req.continue_()
 
-        page.on('request', _saml_response)
-        await page.setRequestInterception(True)
-
         await page.goto(url, waitUntil='domcontentloaded')
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
         await page.waitFor(self._SLEEP_TIMEOUT)
@@ -172,6 +169,9 @@ class Login:
                 await page.waitForSelector('#idBtn_Back')
                 await page.click('#idBtn_Back')
 
+            page.on('request', _saml_response)
+            await page.setRequestInterception(True)
+
             wait_time = time.time() + self._MFA_TIMEOUT
             while time.time() < wait_time and not self.saml_response:
                 if await self._querySelector(page, '.has-error'):
@@ -189,6 +189,9 @@ class Login:
                 await page.screenshot({'path': debugfile})
                 print('See screenshot {} for clues.'.format(debugfile))
             exit(1)
+
+        finally:
+            await browser.close()
 
     @staticmethod
     def _get_aws_roles(saml_response):
