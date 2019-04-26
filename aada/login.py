@@ -51,7 +51,7 @@ class Login:
     _MFA_DELAY = 3
     _MFA_TIMEOUT = 60  # timeout in seconds to process MFA
     _AWAIT_TIMEOUT = 30000
-    _SLEEP_TIMEOUT = 0.5  # in seconds
+    _SLEEP_TIMEOUT = 500
     _EXEC_PATH = os.environ.get('CHROME_EXECUTABLE_PATH')
     _RETRIES = 5
 
@@ -117,24 +117,18 @@ class Login:
         try:
             return await page.querySelector(element)
         except NetworkError:
-            await asyncio.sleep(cls._SLEEP_TIMEOUT)
+            await page.waitFor(cls._SLEEP_TIMEOUT)
             return await cls._querySelector(page, element, retries + 1)
 
     async def _render_js_form(self, url, username, password, mfa=None):
         browser = await launch(executablePath=self._EXEC_PATH,
-                               headless=self._headless,
-                               args=['--no-sandbox', '--disable-setuid-sandbox'])
+                               headless=self._headless)
 
         pages = await browser.pages()
         page = pages[0]
 
         async def _saml_response(req):
-            if req.url.startswith('https://autologon.microsoftazuread-sso.com'):
-                await req.respond({
-                    'status': 200, 'contentType': 'text/plain', 'body': ''
-                })
-
-            elif req.url == 'https://signin.aws.amazon.com/saml':
+            if req.url == 'https://signin.aws.amazon.com/saml':
                 self.saml_response = parse_qs(req.postData)['SAMLResponse'][0]
                 await req.respond({
                     'status': 200, 'contentType': 'text/plain', 'body': ''
@@ -144,16 +138,16 @@ class Login:
 
         page.on('request', _saml_response)
         await page.setRequestInterception(True)
-        await page.goto(url, waitUntil='networkidle0')
+
+        await page.goto(url, waitUntil='domcontentloaded')
         await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
+        await page.waitFor(self._SLEEP_TIMEOUT)
         await page.focus('input[name="loginfmt"]')
         await page.keyboard.type(username)
         await page.click('input[type=submit]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.waitForSelector('input[name="passwd"]:not(.moveOffScreen)')
+        await page.waitFor(self._SLEEP_TIMEOUT)
         await page.focus('input[name="passwd"]')
-        await asyncio.sleep(self._SLEEP_TIMEOUT)
         await page.keyboard.type(password)
         await page.click('input[type=submit]')
 

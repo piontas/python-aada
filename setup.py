@@ -3,12 +3,12 @@ from setuptools import find_packages, setup
 
 dependencies = [
     'awscli', 'botocore', 'boto3', 'requests', 'websockets==6.0',
-    'pyppeteer==0.0.19'
+    'pyppeteer==0.0.25'
 ]
 
 setup(
     name='aada',
-    version='0.1.6',
+    version='0.1.7',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
