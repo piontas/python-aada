@@ -137,13 +137,15 @@ class Login:
                 await req.continue_()
 
         await page.goto(url, waitUntil='domcontentloaded')
-        await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)')
-        await page.waitFor(self._SLEEP_TIMEOUT)
+        await page.waitForSelector('input[name="loginfmt"]:not(.moveOffScreen)', {
+            "visible": True
+        })
         await page.focus('input[name="loginfmt"]')
         await page.keyboard.type(username)
         await page.click('input[type=submit]')
-        await page.waitForSelector('input[name="passwd"]:not(.moveOffScreen)')
-        await page.waitFor(self._SLEEP_TIMEOUT)
+        await page.waitForSelector('input[name="passwd"]:not(.moveOffScreen)', {
+            "visible": True
+        })
         await page.focus('input[name="passwd"]')
         await page.keyboard.type(password)
         await page.click('input[type=submit]')
@@ -154,7 +156,9 @@ class Login:
 
             if mfa:
                 if self._azure_mfa not in MFA_WAIT_METHODS:
-                    await page.waitForSelector('input[name="otc"]:not(.moveOffScreen)')
+                    await page.waitForSelector('input[name="otc"]:not(.moveOffScreen)', {
+                        "visible": True
+                    })
                     await page.focus('input[name="otc"]')
                     mfa_token = input('Azure MFA Token: ')
                     for l in mfa_token:
