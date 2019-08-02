@@ -6,6 +6,7 @@ build/
 .venv/
 
 .idea/
+.vscode/
 *.log
 
 .tox/
