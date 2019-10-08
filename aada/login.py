@@ -184,7 +184,7 @@ class Login:
                 raise TimeoutError
 
         except (TimeoutError, BrowserError, FormError) as e:
-            print('An error occured while authenticating, check credentials.')
+            print('An error occurred while authenticating, check credentials.')
             print(e)
             if self._debug:
                 debugfile = 'aadaerror-{}.png'.format(
