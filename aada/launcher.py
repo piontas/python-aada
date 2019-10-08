@@ -46,12 +46,12 @@ class HeadLessLauncher(Launcher):
             self.options['headless'] = False
 
         if 'headless' not in self.options or self.options.get('headless'):
-            self.chrome_args.extend([
+            self.chrome_args.extend((
                 '--headless',
                 '--disable-gpu',
                 '--hide-scrollbars',
                 '--mute-audio',
-            ])
+            ))
 
         def _is_default_url() -> bool:
             for arg in self.options['args']:
