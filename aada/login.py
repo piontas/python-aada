@@ -63,8 +63,7 @@ class Login:
         self._debug = debug
         self._headless = headless
         self._config = self._session.get_scoped_config()
-        config_writer = ConfigFileWriter()
-        self._config_writer = config_writer
+        self._config_writer = ConfigFileWriter()
         self._azure_tenant_id = self._config.get('azure_tenant_id')
         self._azure_app_id_uri = self._config.get('azure_app_id_uri')
         self._azure_mfa = self._config.get('azure_mfa')
@@ -185,7 +184,7 @@ class Login:
                 raise TimeoutError
 
         except (TimeoutError, BrowserError, FormError) as e:
-            print('An error occured while authenticating, check credentials.')
+            print('An error occurred while authenticating, check credentials.')
             print(e)
             if self._debug:
                 debugfile = 'aadaerror-{}.png'.format(
