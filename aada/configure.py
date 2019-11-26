@@ -52,7 +52,7 @@ class Configure:
         config_filename = os.path.expanduser(
             self._session.get_config_variable('config_file'))
         if KEYRING and config.get('use_keyring'):
-            updatepwd = input('Update Azure password in keyring? ')
+            updatepwd = input('Update Azure password in keyring? (yes/no)')
             if updatepwd.upper() in ['Y', 'YES']:
                 azure_pass = getpass.getpass('Azure password ')
                 keyring.set_password('aada', config.get('azure_username'),
