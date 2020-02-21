@@ -9,6 +9,7 @@ import asyncio
 import time
 
 from datetime import datetime
+from dateutil import tz
 from xml.etree import ElementTree as ET
 from urllib.parse import quote, parse_qs
 
@@ -299,6 +300,7 @@ class Login:
         print('Your access key pair has been stored in the AWS configuration\n'
               'file under the {} profile.'.format(profile))
         print('Credentials expires at {:%Y-%m-%d %H:%M:%S}.'.format(
-            credentials['Expiration']))
+            credentials['Expiration'].replace(
+                tzinfo=tz.gettz('UTC')).astimezone(tz.tzlocal())))
         print('-------------------------------------------------------------\n')
         return 0
