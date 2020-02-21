@@ -8,7 +8,7 @@ dependencies = [
 
 setup(
     name='aada',
-    version='0.1.7',
+    version='0.1.8',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
