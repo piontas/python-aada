@@ -2,13 +2,13 @@
 from setuptools import find_packages, setup
 
 dependencies = [
-    'awscli', 'botocore', 'boto3', 'requests', 'websockets~=6.0',
-    'pyppeteer==0.0.25', 'pyee==6.0.0'
+    'awscli', 'botocore', 'boto3', 'requests', 'websockets==8.1',
+    'pyppeteer==0.2.2', 'pyee==7.0.4'
 ]
 
 setup(
     name='aada',
-    version='0.1.8',
+    version='0.1.9',
     url='https://github.com/piontas/python-aada',
     license='MIT',
     author='Marek Piatek',
@@ -20,8 +20,8 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=dependencies,
-    extras_require = {
-        'keyring':  ['keyring~=18.0.0']
+    extras_require={
+        'keyring': ['keyring~=18.0.0']
     },
     entry_points={
         'console_scripts': [
