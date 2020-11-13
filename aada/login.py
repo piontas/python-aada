@@ -15,9 +15,9 @@ from urllib.parse import quote, parse_qs
 
 from awscli.customizations.configure.writer import ConfigFileWriter
 from pyppeteer.errors import BrowserError, TimeoutError, NetworkError
+from pyppeteer.launcher import Launcher
 
 from . import KEYRING, LOGIN_URL, MFA_WAIT_METHODS
-from .launcher import launch
 
 if KEYRING:
     import keyring
@@ -121,8 +121,7 @@ class Login:
             return await cls._querySelector(page, element, retries + 1)
 
     async def _render_js_form(self, url, username, password, mfa=None):
-        browser = await launch(executablePath=self._EXEC_PATH,
-                               headless=self._headless)
+        browser = await Launcher(executablePath=self._EXEC_PATH, headless=self._headless).launch()
 
         pages = await browser.pages()
         page = pages[0]
