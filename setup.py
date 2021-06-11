@@ -2,7 +2,7 @@
 from setuptools import find_packages, setup
 
 dependencies = [
-    'awscli', 'botocore', 'boto3', 'requests', 'websockets==8.1',
+    'awscli', 'botocore', 'boto3', 'requests', 'websockets==9.1',
     'pyppeteer==0.2.2', 'pyee==7.0.4'
 ]
 
